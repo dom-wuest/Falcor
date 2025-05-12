@@ -78,6 +78,12 @@ RenderPassReflection Shadertoy::reflect(const CompileData& compileData)
 
 void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
+    if (mpReloadShader)
+    {
+        // Reload the shader if needed
+        mpFullScreenPass = FullScreenPass::create(mpDevice, mShaderPath);
+        mpReloadShader = false;
+    }
     // renderData holds the requested resources
     const auto& pOutput = renderData.getTexture("output");
     // Set the output texture as the render target
@@ -99,3 +105,11 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
 }
 
 void Shadertoy::renderUI(Gui::Widgets& widget) {}
+
+void Shadertoy::setShaderPath(const std::string& path)
+{
+    if (path == mShaderPath) return; // No change
+
+    mShaderPath = path;
+    mpReloadShader = true;
+}

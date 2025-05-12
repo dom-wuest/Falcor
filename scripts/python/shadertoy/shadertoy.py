@@ -31,7 +31,8 @@ device = testbed.device
 # === Create a Render Graph ===
 graph = testbed.create_render_graph("ShadertoyRenderGraph")
 
-params = {"shaderPath": DIR / "primitives.ps.slang"}
+#params = {"shaderPath": DIR / "primitives.ps.slang"}
+params = {}
 shadertoy = graph.create_pass("Shadertoy", "Shadertoy", params)
 
 graph.mark_output("Shadertoy.output")
@@ -44,6 +45,8 @@ print(shadertoy.properties)
 prev_time = time.time()
 start_time = prev_time
 frame_idx = 0
+
+
 
 # === Render Loop ===
 while not testbed.should_close:
@@ -65,6 +68,9 @@ while not testbed.should_close:
     if frame_idx == 10000: # take a screenshot at 10000 frames
         screenshot_falcor(f"ShadertoyOutput{frame_idx}_falcor.png")
         screenshot_numpy(f"ShadertoyOutput{frame_idx}_numpy.png")
+
+        # switch to a different shader
+        shadertoy.shaderPath = str(DIR / "primitives.ps.slang")
 
 
 print(shadertoy.properties)
