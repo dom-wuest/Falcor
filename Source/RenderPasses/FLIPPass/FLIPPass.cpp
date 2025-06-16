@@ -56,6 +56,9 @@ const char kMonitorWidthMeters[] = "monitorWidthMeters";
 const char kMonitorDistance[] = "monitorDistanceMeters";
 const char kComputePooledFLIPValues[] = "computePooledFLIPValues";
 const char kUseRealMonitorInfo[] = "useRealMonitorInfo";
+const char kPooledFLIPValuesMax[] = "pooledFLIPValuesMax";
+const char kPooledFLIPValuesMean[] = "pooledFLIPValuesMean";
+const char kPooledFLIPValuesMin[] = "pooledFLIPValuesMin";
 } // namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -113,6 +116,9 @@ Properties FLIPPass::getProperties() const
     props[kMonitorDistance] = mMonitorDistanceMeters;
     props[kComputePooledFLIPValues] = mComputePooledFLIPValues;
     props[kUseRealMonitorInfo] = mUseRealMonitorInfo;
+    props[kPooledFLIPValuesMax] = mMaxFLIP;
+    props[kPooledFLIPValuesMean] = mAverageFLIP;
+    props[kPooledFLIPValuesMin] = mMinFLIP;
     return props;
 }
 
