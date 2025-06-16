@@ -47,19 +47,22 @@ public:
         , iTime(props.get<float>("iTime", 0.0f))
         , iTimeDelta(props.get<float>("iTimeDelta", 0.0f))
         , iFrameRate(props.get<float>("iFrameRate", 60.0f))
-        , iFrame(props.get<int>("iFrame", 0)) { }
+        , iFrame(props.get<int>("iFrame", 0))
+        , iMouse(props.get<float4>("iMouse", float4(0.0f))) { }
 
     void setResolution(float3 resolution) { iResolution = resolution; }
     void setTime(float time) { iTime = time; }
     void setTimeDelta(float timeDelta) { iTimeDelta = timeDelta; }
     void setFrameRate(float frameRate) { iFrameRate = frameRate; }
     void setFrame(int frame) { iFrame = frame; }
+    void setMouse(float4 mouse) { iMouse = mouse; }
 
     float3 getResolution() const { return iResolution; }
     float getTime() const { return iTime; }
     float getTimeDelta() const { return iTimeDelta; }
     float getFrameRate() const { return iFrameRate; }
     int getFrame() const { return iFrame; }
+    float4 getMouse() const { return iMouse; }
 
     Properties getProperties() const
     {
@@ -69,6 +72,7 @@ public:
         props.set("iTimeDelta", iTimeDelta);
         props.set("iFrameRate", iFrameRate);
         props.set("iFrame", iFrame);
+        props.set("iMouse", iMouse);
         return props;
     }
 
@@ -78,6 +82,7 @@ private:
     float iTimeDelta;   ///< render time (in seconds)
     float iFrameRate;   ///< shader frame rate
     int iFrame;         ///< shader frame count
+    float4 iMouse;      ///< mouse position (in pixels)
 };
 
 class Shadertoy : public RenderPass

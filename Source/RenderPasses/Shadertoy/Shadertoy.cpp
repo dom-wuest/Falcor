@@ -38,6 +38,7 @@ static void regShadertoy(pybind11::module& m)
     inputs.def_property("iTimeDelta", &ShadertoyInputs::getTimeDelta, &ShadertoyInputs::setTimeDelta);
     inputs.def_property("iFrameRate", &ShadertoyInputs::getFrameRate, &ShadertoyInputs::setFrameRate);
     inputs.def_property("iFrame", &ShadertoyInputs::getFrame, &ShadertoyInputs::setFrame);
+    inputs.def_property("iMouse", &ShadertoyInputs::getMouse, &ShadertoyInputs::setMouse);
 
     pybind11::class_<Shadertoy, RenderPass, ref<Shadertoy>> pass(m, "Shadertoy");
     pass.def_property("shaderPath", &Shadertoy::getShaderPath, &Shadertoy::setShaderPath);
@@ -99,6 +100,7 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
     pShaderInputs["iTimeDelta"] = mInputs.getTimeDelta();
     pShaderInputs["iFrameRate"] = mInputs.getFrameRate();
     pShaderInputs["iFrame"] = mInputs.getFrame();
+    pShaderInputs["iMouse"] = mInputs.getMouse();
 
     // Execute the full-screen pass
     mpFullScreenPass->execute(pRenderContext, mpFbo);
