@@ -43,6 +43,7 @@ static void regShadertoy(pybind11::module& m)
     pybind11::class_<Shadertoy, RenderPass, ref<Shadertoy>> pass(m, "Shadertoy");
     pass.def_property("shaderPath", &Shadertoy::getShaderPath, &Shadertoy::setShaderPath);
     pass.def_property("shaderInputs", [](Shadertoy& self) -> ShadertoyInputs& { return self.getInputs(); }, nullptr);
+    pass.def_property_readonly("shaderLoaded", &Shadertoy::getShaderLoaded);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -54,10 +55,10 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 Shadertoy::Shadertoy(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice), mInputs(props.get<Properties>("shaderInputs", Properties()))
 {
     // Initialize the shader path (or use our default example)
-    mShaderPath = props.get<std::string>("shaderPath", "RenderPasses/Shadertoy/Shadertoy.ps.slang");
-
-    // Create the full-screen pass and setup fbo
-    mpFullScreenPass = FullScreenPass::create(pDevice, mShaderPath);
+    if(props.has("shaderPath")){
+        mShaderPath = props.get<std::string>("shaderPath");
+        loadShader();
+    }
     mpFbo = Fbo::create(pDevice);
 }
 
@@ -66,6 +67,7 @@ Properties Shadertoy::getProperties() const
     Properties props;
     props.set("shaderPath", mShaderPath);
     props.set("shaderInputs", mInputs.getProperties());
+    props.set("shaderLoaded", mShaderLoaded);
     return props;
 }
 
@@ -82,9 +84,11 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
     if (mpReloadShader)
     {
         // Reload the shader if needed
-        mpFullScreenPass = FullScreenPass::create(mpDevice, mShaderPath);
+        loadShader();
         mpReloadShader = false;
     }
+    if (!mShaderLoaded) return;
+
     // renderData holds the requested resources
     const auto& pOutput = renderData.getTexture("output");
     // Set the output texture as the render target
@@ -113,5 +117,28 @@ void Shadertoy::setShaderPath(const std::string& path)
     if (path == mShaderPath) return; // No change
 
     mShaderPath = path;
-    mpReloadShader = true;
+    loadShader();
+}
+
+void Shadertoy::loadShader()
+{
+    if (mShaderPath.empty())
+    {
+        logError("Shader path is empty. Cannot load shader.");
+        mShaderLoaded = false;
+        return;
+    }
+    if (!Falcor::getFileModifiedTime(mShaderPath))
+    {
+        logError("Shader file does not exist: " + mShaderPath);
+        mShaderLoaded = false;
+        return;
+    }
+    try {
+        mpFullScreenPass = FullScreenPass::create(mpDevice, mShaderPath);
+        mShaderLoaded = true;
+    } catch (const std::exception& e) {
+        logError("Failed to compile shader: " + std::string(e.what()));
+        mShaderLoaded = false;
+    }
 }

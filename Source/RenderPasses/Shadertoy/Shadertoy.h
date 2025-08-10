@@ -109,6 +109,7 @@ public:
     void setShaderPath(const std::string& path);
     std::string getShaderPath() const { return mShaderPath; }
     ShadertoyInputs& getInputs() { return mInputs; }
+    bool getShaderLoaded() const { return mShaderLoaded; }
 
 private:
     ref<FullScreenPass> mpFullScreenPass;
@@ -116,4 +117,7 @@ private:
     ref<Fbo> mpFbo;
     std::string mShaderPath;
     ShadertoyInputs mInputs;
+
+    bool mShaderLoaded = false;
+    void loadShader();
 };
