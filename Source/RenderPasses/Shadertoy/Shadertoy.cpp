@@ -44,6 +44,7 @@ static void regShadertoy(pybind11::module& m)
     pass.def_property("shaderPath", &Shadertoy::getShaderPath, &Shadertoy::setShaderPath);
     pass.def_property("shaderInputs", [](Shadertoy& self) -> ShadertoyInputs& { return self.getInputs(); }, nullptr);
     pass.def_property_readonly("shaderLoaded", &Shadertoy::getShaderLoaded);
+    pass.def_property("texturePath", &Shadertoy::getTexturePath, &Shadertoy::setTexturePath);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -68,6 +69,7 @@ Properties Shadertoy::getProperties() const
     props.set("shaderPath", mShaderPath);
     props.set("shaderInputs", mInputs.getProperties());
     props.set("shaderLoaded", mShaderLoaded);
+    props.set("texturePath", getTexturePath());
     return props;
 }
 
@@ -85,7 +87,17 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
     {
         // Reload the shader if needed
         loadShader();
+
         mpReloadShader = false;
+
+        if (mShaderLoaded && !mTexturePaths[0].empty())
+        {
+            loadTextures();
+
+            // Bind textures to the shader inputs
+            auto pShaderInputs = mpFullScreenPass->getRootVar();
+            pShaderInputs["iChannel0"] = mpTextures[0];
+        }
     }
     if (!mShaderLoaded) return;
 
@@ -135,10 +147,26 @@ void Shadertoy::loadShader()
         return;
     }
     try {
-        mpFullScreenPass = FullScreenPass::create(mpDevice, mShaderPath);
+        ProgramDesc desc;
+        desc.addShaderLibrary(mShaderPath).psEntry("main");
+        desc.addShaderLibrary("RenderPasses/Shadertoy/FullScreenPass.vs.slang").vsEntry("main");
+        mpFullScreenPass = FullScreenPass::create(mpDevice, desc);
         mShaderLoaded = true;
     } catch (const std::exception& e) {
         logError("Failed to compile shader: " + std::string(e.what()));
         mShaderLoaded = false;
+    }
+}
+
+void Shadertoy::loadTextures()
+{
+    mpTextures[0] = Texture::createFromFile(mpDevice, mTexturePaths[0], false, false);
+
+    if (!mpTextures[0]) {
+        logError("Failed to load texture from file.");
+    } else {
+        uint32_t width = mpTextures[0]->getWidth();
+        uint32_t height = mpTextures[0]->getHeight();
+        logInfo(fmt::format("Texture loaded: {}x{}", width, height));
     }
 }

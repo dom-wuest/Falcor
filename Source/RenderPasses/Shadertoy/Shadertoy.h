@@ -111,13 +111,23 @@ public:
     ShadertoyInputs& getInputs() { return mInputs; }
     bool getShaderLoaded() const { return mShaderLoaded; }
 
+    void setTexturePath(const std::string& path) {
+        mTexturePaths[0] = path;
+        mpReloadShader = true;
+    }
+    std::string getTexturePath() const { return mTexturePaths[0]; }
+
 private:
     ref<FullScreenPass> mpFullScreenPass;
+    ref<Texture> mpTextures[4]; // iChannel0 - iChannel3
     bool mpReloadShader = false;
     ref<Fbo> mpFbo;
     std::string mShaderPath;
     ShadertoyInputs mInputs;
 
+    std::string mTexturePaths[4]; // iChannel0 - iChannel3
+
     bool mShaderLoaded = false;
     void loadShader();
+    void loadTextures();
 };
