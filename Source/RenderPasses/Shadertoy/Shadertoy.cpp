@@ -28,23 +28,48 @@
 #include "Shadertoy.h"
 
 /**
- * here we define the bindings for the Shadertoy and ShadertoyInputs classes
+ * here we define the bindings for the Shadertoy and ShadertoyParams classes
  */
 static void regShadertoy(pybind11::module& m)
 {
-    pybind11::class_<ShadertoyInputs> inputs(m, "ShadertoyInputs");
-    inputs.def_property("iResolution", &ShadertoyInputs::getResolution, &ShadertoyInputs::setResolution);
-    inputs.def_property("iTime", &ShadertoyInputs::getTime, &ShadertoyInputs::setTime);
-    inputs.def_property("iTimeDelta", &ShadertoyInputs::getTimeDelta, &ShadertoyInputs::setTimeDelta);
-    inputs.def_property("iFrameRate", &ShadertoyInputs::getFrameRate, &ShadertoyInputs::setFrameRate);
-    inputs.def_property("iFrame", &ShadertoyInputs::getFrame, &ShadertoyInputs::setFrame);
-    inputs.def_property("iMouse", &ShadertoyInputs::getMouse, &ShadertoyInputs::setMouse);
+    pybind11::class_<ShadertoyParams> params(m, "ShadertoyParams");
+    params.def_property("iResolution", &ShadertoyParams::getResolution, &ShadertoyParams::setResolution);
+    params.def_property("iTime", &ShadertoyParams::getTime, &ShadertoyParams::setTime);
+    params.def_property("iTimeDelta", &ShadertoyParams::getTimeDelta, &ShadertoyParams::setTimeDelta);
+    params.def_property("iFrameRate", &ShadertoyParams::getFrameRate, &ShadertoyParams::setFrameRate);
+    params.def_property("iFrame", &ShadertoyParams::getFrame, &ShadertoyParams::setFrame);
+    params.def_property("iMouse", &ShadertoyParams::getMouse, &ShadertoyParams::setMouse);
+
+    pybind11::enum_<Filter>(m, "Filter")
+        .value("Nearest", Filter::Nearest)
+        .value("Linear", Filter::Linear)
+        .value("Mipmap", Filter::Mipmap);
+
+    pybind11::enum_<Wrap>(m, "Wrap")
+        .value("Repeat", Wrap::Repeat)
+        .value("Clamp", Wrap::Clamp);
+
+    pybind11::class_<ShadertoyTexture, ref<ShadertoyTexture>> texture(m, "ShadertoyTexture");
+    texture.def(pybind11::init([](ref<Device> pDevice, const std::string& texturePath, Filter filter, Wrap wrap, bool srgb) {
+        return ShadertoyTexture::create(pDevice, texturePath, filter, wrap, srgb);
+    }), pybind11::arg("device"), pybind11::arg("texturePath"), pybind11::arg("filter") = Filter::Linear, pybind11::arg("wrap") = Wrap::Repeat, pybind11::arg("srgb") = false);
+    texture.def_property_readonly("path", &ShadertoyTexture::getTexturePath);
+    texture.def_property_readonly("filter", &ShadertoyTexture::getFilter);
+    texture.def_property_readonly("wrap", &ShadertoyTexture::getWrap);
+    texture.def_property_readonly("srgb", &ShadertoyTexture::isSrgb);
 
     pybind11::class_<Shadertoy, RenderPass, ref<Shadertoy>> pass(m, "Shadertoy");
     pass.def_property("shaderPath", &Shadertoy::getShaderPath, &Shadertoy::setShaderPath);
-    pass.def_property("shaderInputs", [](Shadertoy& self) -> ShadertoyInputs& { return self.getInputs(); }, nullptr);
+    pass.def_property("shaderInputs", [](Shadertoy& self) -> ShadertoyParams& { return self.getParams(); }, nullptr);
     pass.def_property_readonly("shaderLoaded", &Shadertoy::getShaderLoaded);
-    pass.def_property("texturePath", &Shadertoy::getTexturePath, &Shadertoy::setTexturePath);
+    for (int i = 0; i < 4; ++i)
+    {
+        pass.def_property(
+            ("iChannel" + std::to_string(i)).c_str(),
+            [i](Shadertoy& self) { return self.getTexture(i); },
+            [i](Shadertoy& self, const ref<ShadertoyTexture>& tex) { self.setTexture(i, tex); }
+        );
+    }
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -53,7 +78,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regShadertoy);      // register the bindings
 }
 
-Shadertoy::Shadertoy(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice), mInputs(props.get<Properties>("shaderInputs", Properties()))
+Shadertoy::Shadertoy(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice), mParams(props.get<Properties>("shaderInputs", Properties()))
 {
     // Initialize the shader path (or use our default example)
     if(props.has("shaderPath")){
@@ -67,9 +92,8 @@ Properties Shadertoy::getProperties() const
 {
     Properties props;
     props.set("shaderPath", mShaderPath);
-    props.set("shaderInputs", mInputs.getProperties());
+    props.set("shaderInputs", mParams.getProperties());
     props.set("shaderLoaded", mShaderLoaded);
-    props.set("texturePath", getTexturePath());
     return props;
 }
 
@@ -90,13 +114,13 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
 
         mpReloadShader = false;
 
-        if (mShaderLoaded && !mTexturePaths[0].empty())
+        // Re-bind the textures
+        for (int i = 0; i < 4; ++i)
         {
-            loadTextures();
-
-            // Bind textures to the shader inputs
-            auto pShaderInputs = mpFullScreenPass->getRootVar();
-            pShaderInputs["iChannel0"] = mpTextures[0];
+            if (mpTextures[i])
+            {
+                bindTex(i);
+            }
         }
     }
     if (!mShaderLoaded) return;
@@ -111,12 +135,12 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Set the shader inputs
     auto pShaderInputs = mpFullScreenPass->getRootVar();
-    pShaderInputs["iResolution"] = mInputs.getResolution();
-    pShaderInputs["iTime"] = mInputs.getTime();
-    pShaderInputs["iTimeDelta"] = mInputs.getTimeDelta();
-    pShaderInputs["iFrameRate"] = mInputs.getFrameRate();
-    pShaderInputs["iFrame"] = mInputs.getFrame();
-    pShaderInputs["iMouse"] = mInputs.getMouse();
+    pShaderInputs["iResolution"] = mParams.getResolution();
+    pShaderInputs["iTime"] = mParams.getTime();
+    pShaderInputs["iTimeDelta"] = mParams.getTimeDelta();
+    pShaderInputs["iFrameRate"] = mParams.getFrameRate();
+    pShaderInputs["iFrame"] = mParams.getFrame();
+    pShaderInputs["iMouse"] = mParams.getMouse();
 
     // Execute the full-screen pass
     mpFullScreenPass->execute(pRenderContext, mpFbo);
@@ -130,6 +154,16 @@ void Shadertoy::setShaderPath(const std::string& path)
 
     mShaderPath = path;
     loadShader();
+}
+
+void Shadertoy::setTexture(int channel, const ref<ShadertoyTexture>& texture)
+{
+    if (channel < 0 || channel >= 4) {
+        logError("Channel index out of bounds. Must be between 0 and 3.");
+        return;
+    }
+    mpTextures[channel] = texture;
+    bindTex(channel);
 }
 
 void Shadertoy::loadShader()
@@ -158,15 +192,21 @@ void Shadertoy::loadShader()
     }
 }
 
-void Shadertoy::loadTextures()
+void Shadertoy::bindTex(int channel)
 {
-    mpTextures[0] = Texture::createFromFile(mpDevice, mTexturePaths[0], false, false);
-
-    if (!mpTextures[0]) {
-        logError("Failed to load texture from file.");
-    } else {
-        uint32_t width = mpTextures[0]->getWidth();
-        uint32_t height = mpTextures[0]->getHeight();
-        logInfo(fmt::format("Texture loaded: {}x{}", width, height));
+    if (channel < 0 || channel >= 4) {
+        logError("Channel index out of bounds. Must be between 0 and 3.");
+        return;
+    }
+    if (!mpTextures[channel]) {
+        logError("Texture for channel " + std::to_string(channel) + " is not set.");
+        return;
+    }
+    if (mShaderLoaded) {
+        auto pShaderInputs = mpFullScreenPass->getRootVar();
+        std::string channelName = "iChannel" + std::to_string(channel);
+        std::string samplerName = "_iChannel" + std::to_string(channel) + "_sampler";
+        pShaderInputs[channelName] = mpTextures[channel]->getTexture();
+        pShaderInputs[samplerName] = mpTextures[channel]->getSampler();
     }
 }

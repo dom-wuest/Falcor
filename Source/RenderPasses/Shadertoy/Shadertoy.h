@@ -29,61 +29,11 @@
 #include "Falcor.h"
 #include "RenderGraph/RenderPass.h"
 #include "Core/Pass/FullScreenPass.h"
+#include "ShadertoyParams.h"
+#include "ShadertoyTexture.h"
 
 using namespace Falcor;
 
-/**
- * ShadertoyInputs holds the variables which may be used by Shadertoy snippets.
- * These variables are passed to the shader as uniforms.
- *
- * This container also provides setter and getter methods for each variable which are used for the python bindings.
- * The variables are set by the Shadertoy Pass and can be accessed in the shader using the iTime, iResolution, etc. variables.
- */
-class ShadertoyInputs
-{
-public:
-    ShadertoyInputs(const Properties& props)
-        : iResolution(props.get<float3>("iResolution", float3(1.0f)))
-        , iTime(props.get<float>("iTime", 0.0f))
-        , iTimeDelta(props.get<float>("iTimeDelta", 0.0f))
-        , iFrameRate(props.get<float>("iFrameRate", 60.0f))
-        , iFrame(props.get<int>("iFrame", 0))
-        , iMouse(props.get<float4>("iMouse", float4(0.0f))) { }
-
-    void setResolution(float3 resolution) { iResolution = resolution; }
-    void setTime(float time) { iTime = time; }
-    void setTimeDelta(float timeDelta) { iTimeDelta = timeDelta; }
-    void setFrameRate(float frameRate) { iFrameRate = frameRate; }
-    void setFrame(int frame) { iFrame = frame; }
-    void setMouse(float4 mouse) { iMouse = mouse; }
-
-    float3 getResolution() const { return iResolution; }
-    float getTime() const { return iTime; }
-    float getTimeDelta() const { return iTimeDelta; }
-    float getFrameRate() const { return iFrameRate; }
-    int getFrame() const { return iFrame; }
-    float4 getMouse() const { return iMouse; }
-
-    Properties getProperties() const
-    {
-        Properties props;
-        props.set("iResolution", iResolution);
-        props.set("iTime", iTime);
-        props.set("iTimeDelta", iTimeDelta);
-        props.set("iFrameRate", iFrameRate);
-        props.set("iFrame", iFrame);
-        props.set("iMouse", iMouse);
-        return props;
-    }
-
-private:
-    float3 iResolution; ///< viewport resolution (in pixels)
-    float iTime;        ///< shader playback time (in seconds)
-    float iTimeDelta;   ///< render time (in seconds)
-    float iFrameRate;   ///< shader frame rate
-    int iFrame;         ///< shader frame count
-    float4 iMouse;      ///< mouse position (in pixels)
-};
 
 class Shadertoy : public RenderPass
 {
@@ -108,26 +58,21 @@ public:
 
     void setShaderPath(const std::string& path);
     std::string getShaderPath() const { return mShaderPath; }
-    ShadertoyInputs& getInputs() { return mInputs; }
+    ShadertoyParams& getParams() { return mParams; }
     bool getShaderLoaded() const { return mShaderLoaded; }
 
-    void setTexturePath(const std::string& path) {
-        mTexturePaths[0] = path;
-        mpReloadShader = true;
-    }
-    std::string getTexturePath() const { return mTexturePaths[0]; }
+    void setTexture(int channel, const ref<ShadertoyTexture>& texture);
+    ref<ShadertoyTexture> getTexture(int channel) const { return mpTextures[channel]; }
 
 private:
     ref<FullScreenPass> mpFullScreenPass;
-    ref<Texture> mpTextures[4]; // iChannel0 - iChannel3
+    ref<ShadertoyTexture> mpTextures[4]; // iChannel0 - iChannel3
     bool mpReloadShader = false;
     ref<Fbo> mpFbo;
     std::string mShaderPath;
-    ShadertoyInputs mInputs;
-
-    std::string mTexturePaths[4]; // iChannel0 - iChannel3
+    ShadertoyParams mParams;
 
     bool mShaderLoaded = false;
     void loadShader();
-    void loadTextures();
+    void bindTex(int channel);
 };

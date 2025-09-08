@@ -3,6 +3,9 @@ add_plugin(Shadertoy)
 target_sources(Shadertoy PRIVATE
     Shadertoy.cpp
     Shadertoy.h
+    ShadertoyParams.h
+    ShadertoyTexture.h
+    ShadertoyTexture.cpp
     Shadertoy.ps.slang
     FullScreenPass.vs.slang
 )
