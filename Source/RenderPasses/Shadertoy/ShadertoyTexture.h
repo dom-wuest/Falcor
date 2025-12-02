@@ -9,6 +9,7 @@ using namespace Falcor;
 
 enum class Filter : uint8_t { Nearest = 0, Linear = 1, Mipmap = 2 };
 enum class Wrap : uint8_t { Repeat = 0, Clamp = 1 };
+enum class Shape : uint8_t { Texture2D = 0, TextureCube = 1 };
 
 
 class ShadertoyTexture : public Object
@@ -26,6 +27,14 @@ public:
     Filter getFilter() const { return mFilter; }
     Wrap getWrap() const { return mWrap; }
     bool isSrgb() const { return mSrgb; }
+    Shape getShape() const
+    {
+        if (mpTexture->getType() == Texture::Type::TextureCube)
+            return Shape::TextureCube;
+        else
+            return Shape::Texture2D;
+    }
+
 
 private:
     std::string mTexturePath;

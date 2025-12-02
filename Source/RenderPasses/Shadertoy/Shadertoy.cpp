@@ -146,7 +146,22 @@ void Shadertoy::execute(RenderContext* pRenderContext, const RenderData& renderD
     mpFullScreenPass->execute(pRenderContext, mpFbo);
 }
 
-void Shadertoy::renderUI(Gui::Widgets& widget) {}
+void Shadertoy::renderUI(Gui::Widgets& widget) {
+    // Shader path
+    if (widget.textbox("Shader Path", mShaderPath)) {
+        mpReloadShader = true;
+    }
+
+    // display textures bound to channels
+    for (int i = 0; i < 4; ++i) {
+        std::string label = "iChannel" + std::to_string(i);
+        if (mpTextures[i]) {
+            widget.text(label + ": " + mpTextures[i]->getTexturePath());
+        } else {
+            widget.text(label + ": <none>"); 
+        }
+    }
+}
 
 void Shadertoy::setShaderPath(const std::string& path)
 {
