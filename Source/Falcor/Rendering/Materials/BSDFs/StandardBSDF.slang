@@ -84,6 +84,8 @@ struct StandardBSDFData : IDifferentiable
         diffuseTransmission = diffData.read(offset);
         specularTransmission = diffData.read(offset);
     }
+
+    __init() {}
 }
 
 /**

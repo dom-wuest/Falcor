@@ -57,7 +57,7 @@ void updateTriangleVertices(uint3 DTid : SV_DispatchThreadID)
     // Load triangle data.
     EmissiveTriangle tri = gTriangleData[triIdx].unpack();
     // Update triangle data.
-    GeometryInstanceID instanceID = { meshData.instanceID };
+    GeometryInstanceID instanceID = { meshData.instanceID, 0 };
     gScene.getVertexPositionsW(instanceID, triangleIndex, tri.posW);
     tri.normal = gScene.computeFaceNormalAndAreaW(instanceID, tri.posW, tri.area);
 

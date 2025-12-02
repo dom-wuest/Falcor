@@ -77,7 +77,7 @@ extension MaterialSystem
     */
     ShadingData prepareShadingData(const VertexData v, const uint materialID, const float3 viewDir)
     {
-        ShadingData sd = {};
+        ShadingData sd;
 
         sd.posW = v.posW;
         sd.uv = v.texC;
